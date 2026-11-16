@@ -40,7 +40,15 @@ KINDS = ("unit", "gear", "spell", "legend", "rune", "battlefield")
 # state, not the card. Every other field of an environment object is the card's, and equals its record.
 DYNAMIC_FIELDS = frozenset({"owner", "controller", "control_changed", "exhausted", "damage", "might_modifiers", "stunned",
                             "buffed", "buff_count", "empowered", "attached_to", "combat_designation", "identity",
-                            "modes_chosen", "pending_recall"})
+                            "modes_chosen", "pending_recall",
+                            # set 2 (measured 2026-11-17): the turn a card was attached (attach), the lifecycle of a
+                            # copying card's attaches (Svellsongur), the units a card's linked ability banished (The Zero
+                            # Drive) - effect_ir writes and validates each
+                            "attached_on_turn", "copy_lifecycle", "linked_banished"})
+# What an attached card wrote on its Top-Most card (effect_ir: an Effect Text's rows, a copy's rows and keys), recorded
+# in that card's `copied_text`: not the Top-Most card's printed text. environment_problems takes each record's writing out
+# of the object before comparing it with its record, and holds the writing itself to what that attached card writes
+WRITTEN_RECORD = "copied_text"
 # A card field some of whose entries a play adds (each naming the chain item that added it): those entries are game
 # state, the rest - a printed "This enters exhausted." - the card's
 PLAY_BOUND_ENTRIES = {"entry_replacements": "chain_item"}
@@ -286,10 +294,14 @@ def place(catalogue: dict[str, Any], ref: str, *, owner: str, object_id: str, co
         obj["activated_abilities"] = {ability_id(object_id, local): {**_bind_some(state_copy.deepcopy(row), own),
                                                                      "effect_program_id": program_id(ref, row["effect_program_id"])}
                                       for local, row in sorted(rows.items())}
-    # an ability's own Dependent condition (a Legion gate) is keyed by its id, so it follows the id's namespace
+    # an ability's own Dependent condition (a Legion gate) is keyed by its id, so it follows the id's namespace; one that
+    # names its own ability ("Use only once per turn": ability_uses_this_turn_below) names it in that namespace too (as a
+    # copy's does, effect_ir.copied_text_bundle)
     if isinstance(obj.get("ability_conditions"), dict):
-        obj["ability_conditions"] = {ability_id(object_id, local): condition
-                                     for local, condition in sorted(obj["ability_conditions"].items())}
+        obj["ability_conditions"] = {
+            ability_id(object_id, local): ({**condition, "ability": ability_id(object_id, local)}
+                                           if isinstance(condition, dict) and condition.get("ability") == local else condition)
+            for local, condition in sorted(obj["ability_conditions"].items())}
     return obj
 
 
@@ -355,10 +367,123 @@ def instantiate_program(catalogue: dict[str, Any], ref: str, key: str, bindings:
     return program
 
 
+def _copy_bundle(state: dict[str, Any], attached_id: str, host_id: str, printed_host: dict[str, Any]) -> dict[str, Any] | None:
+    """A copying card's bundle (Svellsongur, effect_ir.copied_text_bundle) over the Top-Most card as its record prints it
+    (its dynamic fields as they are), at the copying card's lifecycle; None when the engine refuses the copy."""
+    from effect_ir import copied_text_bundle
+    probe = state_copy.deepcopy(state)
+    live = probe["objects"][host_id]
+    probe["objects"][host_id] = {**printed_host, **{k: v for k, v in live.items() if k in DYNAMIC_FIELDS}}
+    try:
+        return copied_text_bundle(probe, attached_id, host_id, int(probe["objects"][attached_id].get("copy_lifecycle") or 0))
+    except Exception:  # noqa: BLE001 - a copy the engine refuses writes nothing that could be its
+        return None
+
+
+def _written_replacements(state: dict[str, Any], catalogue: dict[str, Any]) -> list[dict[str, Any]]:
+    """The Replacement Effects attached cards wrote, as effect_ir.append_effect_text writes them from each attached card's
+    record now: an Effect Text's (Guardian Angel) sourced from the attached card, about the Top-Most card, its controller
+    the attached card's; a copy's (Svellsongur) the Top-Most card's own, its controller the Top-Most card's."""
+    from effect_ir import EFFECT_TEXT_COPY
+    objects = state.get("objects") or {}
+    cards = catalogue.get("cards") or {}
+    out = []
+    for attached_id, attached in sorted(objects.items()):
+        host_id = attached.get("attached_to")
+        host = objects.get(host_id) if isinstance(host_id, str) else None
+        if host is None:
+            continue
+        base = f"effect_text:{attached_id}:{host_id}"
+        if attached.get("effect_text_copy") == EFFECT_TEXT_COPY:
+            if host.get("card_ref") not in cards:
+                continue
+            printed = place(catalogue, host["card_ref"], owner=host.get("owner"), object_id=host_id,
+                            controller=host.get("controller"))
+            bundle = _copy_bundle(state, attached_id, host_id, printed)
+            for index, template in enumerate((bundle or {}).get("copy_replacements") or []):
+                out.append({**state_copy.deepcopy(template), "replacement_id": f"{base}:replacement:copy:{index}",
+                            "controller": host.get("controller"), "source_object": host_id})
+        elif isinstance(attached.get("effect_text"), dict):
+            for index, template in enumerate(attached["effect_text"].get("replacements") or []):
+                out.append({**state_copy.deepcopy(template), "replacement_id": f"{base}:replacement:{index}",
+                            "controller": attached.get("controller"), "source_object": attached_id,
+                            "target_object_id": host_id})
+    return out
+
+
+def _written_by(state: dict[str, Any], attached_id: str, host_id: str, printed_host: dict[str, Any]) -> dict[str, Any] | None:
+    """What the attached card writes on the Top-Most card under its copied_text record ({rows, keys, values}), as
+    effect_ir writes it: an Effect Text's rows (EFFECT_TEXT_ROW_FIELDS), each id made the attached card's; a copy's rows,
+    keys and values (Svellsongur) - copied_text_bundle over the Top-Most card as its record prints it, at the attached
+    card's lifecycle. None when that card is not attached to it or writes nothing there."""
+    from effect_ir import EFFECT_TEXT_COPY, EFFECT_TEXT_ROW_FIELDS
+    attached = (state.get("objects") or {}).get(attached_id) or {}
+    if attached.get("attached_to") != host_id:
+        return None
+    if attached.get("effect_text_copy") == EFFECT_TEXT_COPY:
+        bundle = _copy_bundle(state, attached_id, host_id, printed_host)
+        if bundle is None:
+            return None
+        copied = bundle["copy"]
+        return {"rows": copied["rows"], "keys": {field: sorted(keyed) for field, keyed in copied["keys"].items()},
+                "values": copied["values"]}
+    text = attached.get("effect_text")
+    rows = text.get("rows") if isinstance(text, dict) else None
+    if not rows:
+        return None
+    suffix = f":effect_text:{attached_id}"
+    written = {}
+    for field, entries in rows.items():
+        id_key = EFFECT_TEXT_ROW_FIELDS.get(field)
+        written[field] = [{**row, id_key: f"{row[id_key]}{suffix}"} if id_key and isinstance(row.get(id_key), str) else row
+                          for row in entries]
+    return {"rows": written, "keys": {}, "values": {}}
+
+
+def _printed_projection(state: dict[str, Any], object_id: str, obj: dict[str, Any],
+                        printed: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """The object's printed fields - its card fields with what attached cards wrote on it taken out (its copied_text
+    record, row by row and key by key) - and why any of that writing is not what the attached card writes. Nothing is let
+    off by field: a printed row edited, a row no record names, a record's row missing from the object, or a record
+    writing other than its attached card does, each is a problem."""
+    fields = _card_fields(obj)
+    record = fields.pop(WRITTEN_RECORD, None)
+    if record is None:
+        return fields, []
+    if not isinstance(record, dict):
+        return fields, [f"{object_id}.{WRITTEN_RECORD} is not a record of attached cards"]
+    problems = []
+    for attached_id, written in sorted(record.items()):
+        if not isinstance(written, dict) or written != _written_by(state, attached_id, object_id, printed):
+            problems.append(f"{object_id}.{WRITTEN_RECORD}[{attached_id!r}] is not what that attached card writes")
+            if not isinstance(written, dict):
+                continue
+        for field, rows in (written.get("rows") or {}).items():
+            kept = list(fields.get(field) or [])
+            for row in rows:
+                if row in kept:
+                    kept.remove(row)
+                else:
+                    problems.append(f"{object_id}.{field} lacks a row {attached_id!r} wrote")
+            if kept:
+                fields[field] = kept
+            else:
+                fields.pop(field, None)
+        for field, keys in (written.get("keys") or {}).items():
+            kept = {k: v for k, v in (fields.get(field) or {}).items() if k not in set(keys)}
+            if kept:
+                fields[field] = kept
+            else:
+                fields.pop(field, None)
+    return fields, problems
+
+
 def environment_problems(state: dict[str, Any], catalogue: dict[str, Any]) -> list[str]:
     """Why `state` is not a state of this environment (empty when it is): not 1v1; an object with no card_ref or one
     the catalogue lacks; a card the catalogue says is not fully assembled; an object whose fields other than the
-    DYNAMIC ones are not exactly its record's - none missing, none added, none edited."""
+    DYNAMIC ones are not exactly its record's - none missing, none added, none edited - once what attached cards wrote
+    on it (its copied_text record) is taken out; and writing that is not what the attached card writes
+    (_printed_projection)."""
     problems = []
     if len(state.get("players") or {}) != 2:
         problems.append(f"the environment is {FORMAT}; the state has {len(state.get('players') or {})} players")
@@ -392,7 +517,9 @@ def environment_problems(state: dict[str, Any], catalogue: dict[str, Any]) -> li
         if cards[ref].get("incomplete"):
             problems.append(f"{object_id} is {ref!r}, which the catalogue has not fully assembled: {cards[ref]['incomplete']}")
         want = place(catalogue, ref, owner=obj.get("owner"), object_id=object_id, controller=obj.get("controller"))
-        static_have, static_want = _card_fields(obj), _card_fields(want)
+        static_have, written = _printed_projection(state, object_id, obj, want)
+        problems += written
+        static_want = _card_fields(want)
         for field in sorted(set(static_have) | set(static_want)):
             if static_have.get(field, "<absent>") != static_want.get(field, "<absent>"):
                 problems.append(f"{object_id}.{field} differs from {ref!r}'s record")
@@ -412,7 +539,7 @@ def environment_problems(state: dict[str, Any], catalogue: dict[str, Any]) -> li
             if have.get(field, "<absent>") != want.get(field, "<absent>"):
                 problems.append(f"Battlefield {battlefield_id}.{field} differs from {ref!r}'s record")
     # no legacy list entry; the source-backed Replacement Effects are exactly what the engine materializes for the
-    # state's objects (a granted or created one is game state)
+    # state's objects and what attached cards wrote (_written_replacements; a granted or created one is game state)
     for name in LEGACY_LISTS:
         if state.get(name):
             problems.append(f"the state's {name} hold entries no environment card adds (its statics are on its objects)")
@@ -420,7 +547,7 @@ def environment_problems(state: dict[str, Any], catalogue: dict[str, Any]) -> li
     rest = state_copy.deepcopy({k: v for k, v in state.items() if k != "replacement_effects"})
     rest["replacement_effects"] = [r for r in state.get("replacement_effects") or [] if "source_object" not in r]
     materialize_printed_replacements(rest)
-    want = [r for r in rest["replacement_effects"] if "source_object" in r]
+    want = [r for r in rest["replacement_effects"] if "source_object" in r] + _written_replacements(state, catalogue)
     if sorted(json_key(r) for r in own) != sorted(json_key(r) for r in want):
         problems.append("the state's source-backed replacement_effects are not exactly those its objects' printed ones "
                         "materialize to")

@@ -304,7 +304,88 @@ def main() -> int:
     refused = play_card(fixture(), state, cheaper, effect_program=program)
     if refused.get("committed") or refused.get("reason_code") != "declaration_not_as_catalogued":
         fail("E5 end to end", f"the ability at another cost was not refused as not catalogued: {refused.get('reason_code')}")
+    e6()
     return report()
+
+
+def e6() -> None:
+    """E6 (set 2, 2026-11-17): what an attached card writes on its Top-Most card is game state the record accounts for,
+    not an edit - and nothing else is let off."""
+    from effect_ir import apply_program, validate_state
+    cat = catalogue()
+    cat["cards"]["Test Gear"] = {"object": {"kind": "gear", "printed_cost": {"energy": 1, "power": {}}, "tags": ["Equipment"],
+                                            "might_bonus": 1, "effect_text": {"rows": {
+                                                "static_auras": [{"aura_id": "here", "keyword": "ganking", "criteria": {
+                                                    "kind": "unit", "controller_relation": "friendly", "at_source_battlefield": True}}],
+                                                "printed_damage_modifiers": [{"amount": 3, "scope": {"kind": "controller_sources"}}]},
+                                                # a Replacement Effect about the Top-Most card (Guardian Angel's form)
+                                                "replacements": [{"mode": "replace_with", "event_op": "kill", "optional": False,
+                                                                  "uses_remaining": None, "replacement_effects": [
+                                                                      {"op": "kill", "effect_id": "kill-self", "object_id": "$source"}]}]}}}
+    cat["cards"]["Test Host"] = {"object": {"kind": "unit", "printed_cost": {"energy": 1, "power": {}}, "base_might": 2,
+                                            "static_auras": [{"aura_id": "own", "amount": 1, "criteria": {
+                                                "kind": "unit", "controller_relation": "friendly", "exclude_source": True}}]}}
+    cat["cards"]["Test Once"] = {"object": {"kind": "unit", "printed_cost": {"energy": 1, "power": {}}, "base_might": 1,
+                                            "ability_conditions": {"a1": {"kind": "ability_uses_this_turn_below",
+                                                                          "ability": "a1", "count": 1}}},
+                                 "activated_abilities": {"a1": {"cost": {"energy": 1, "power": {}}, "effect_program_id": "a1"}},
+                                 "programs": {"a1": {"effects": [{"op": "draw", "effect_id": "dr", "player": "$controller",
+                                                                  "count": 1}]}}}
+    cat["catalogue_hash"] = CE.catalogue_hash(cat)
+    if CE.validate_catalogue(cat):
+        fail("E6 written", f"the catalogue with an Equipment's rows does not validate: {CE.validate_catalogue(cat)[:2]}")
+        return
+    state = placed_state(cat)
+    for object_id, ref, where in (("h1", "Test Host", "bf1"), ("h2", "Test Host", "bf1"), ("g", "Test Gear", None)):
+        state["objects"][object_id] = CE.place(cat, ref, owner="p1", object_id=object_id)
+        if where:
+            state["battlefields"][where]["objects"].append(object_id)
+        else:
+            state["players"]["p1"]["zones"]["base"].append(object_id)
+    state["battlefields"]["bf1"]["controller"] = "p1"
+    once = CE.place(cat, "Test Once", owner="p1", object_id="o")
+    if once.get("ability_conditions") != {"o:a1": {"kind": "ability_uses_this_turn_below", "ability": "o:a1", "count": 1}}:
+        fail("E6 written", f"a condition naming its own ability is not placed in the ability's namespace: {once.get('ability_conditions')}")
+
+    def run(s, effect):
+        done = apply_program(s, {"schema_version": "riftbound-effect-program.v1",
+                                 "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}, "program_id": "e6",
+                                 "controller": "p1", "effects": [effect]})
+        if not done.get("committed"):
+            raise SystemExit(f"E6: {effect['op']} did not commit: {done.get('reason_code')} {done.get('reason')} {done.get('errors')}")
+        return done["next_state"]
+
+    before = CE.environment_problems(state, cat)
+    on = run(state, {"op": "attach", "effect_id": "a", "object_id": "g", "to": "h1"})
+    if before or validate_state(on) or CE.environment_problems(on, cat):
+        fail("E6 written", f"an attach is not an environment state: {before or validate_state(on) or CE.environment_problems(on, cat)}")
+    moved = run(on, {"op": "attach", "effect_id": "a", "object_id": "g", "to": "h2"})
+    off = run(on, {"op": "detach", "effect_id": "d", "object_id": "g"})
+    for label, s in (("re-attached to another host", moved), ("detached", off)):
+        if validate_state(s) or CE.environment_problems(s, cat):
+            fail("E6 written", f"{label}: {validate_state(s) or CE.environment_problems(s, cat)}")
+    forged = copy.deepcopy(on)
+    forged["objects"]["h1"]["static_auras"].append({"aura_id": "forged", "keyword": "tank", "criteria": {"kind": "unit"}})
+    edited_both = copy.deepcopy(on)
+    for rows in (edited_both["objects"]["h1"]["printed_damage_modifiers"],
+                 edited_both["objects"]["h1"]["copied_text"]["g"]["rows"]["printed_damage_modifiers"]):
+        rows[0]["amount"] = 9
+    printed_edit = copy.deepcopy(on)
+    printed_edit["objects"]["h1"]["static_auras"][0]["amount"] = 5
+    lost = copy.deepcopy(on)
+    lost["objects"]["h1"].pop("printed_damage_modifiers")
+    written = [r for r in on["replacement_effects"] if r.get("source_object") == "g"]
+    if [(r["replacement_id"], r.get("target_object_id")) for r in written] != [("effect_text:g:h1:replacement:0", "h1")]:
+        fail("E6 written", f"the Effect Text's Replacement Effect was not written about its Top-Most card: {written}")
+    replaced = copy.deepcopy(on)
+    next(r for r in replaced["replacement_effects"] if r.get("source_object") == "g")["optional"] = True
+    unreplaced = copy.deepcopy(on)
+    unreplaced["replacement_effects"] = [r for r in unreplaced["replacement_effects"] if r.get("source_object") != "g"]
+    for label, s in (("a row no record names", forged), ("a written row edited with its record", edited_both),
+                     ("the host's own printed row edited", printed_edit), ("a row its record names gone", lost),
+                     ("a written Replacement Effect edited", replaced), ("a written Replacement Effect gone", unreplaced)):
+        if not CE.environment_problems(s, cat):
+            fail("E6 written", f"{label} was not named")
 
 
 def report() -> int:
@@ -318,7 +399,11 @@ def report() -> int:
           "a stale hash; placed objects carry their records, triggers bound to them; programs bind every symbol; a state "
           "is the environment's only with every object catalogued and unedited, no legacy list entry, and exactly the "
           "printed replacements its objects materialize, in 1v1; a placed ability plays as its row says and not "
-          "otherwise (E1-E5)")
+          "otherwise; what an attached card writes on its Top-Most card is accounted for - attached, re-attached and "
+          "detached states are the environment's (its Replacement Effect too) - and a row no record names, a written row "
+          "edited with its record, an edited printed row, a missing written row and a written Replacement Effect edited "
+          "or gone are each named; a condition naming its own ability is "
+          "placed in its namespace (E1-E6)")
     return 0
 
 

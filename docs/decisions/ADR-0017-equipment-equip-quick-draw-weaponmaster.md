@@ -53,6 +53,18 @@ Addendum (2026-11-16, the overlay's package 23, for the last set-2 Equipment):
   attached card's, recorded in its `copied_text` - the record Svellsongur's copy already keeps - and `drop_effect_text`
   takes them out again. Read there, "here" is the Top-Most card's battlefield and "your" its current controller.
 
+Addendum (2026-11-17, the overlay's package 23, its first review): what an attach writes is game state the closed
+environment accounts for, not an edit of the Top-Most card. `closed_environment.environment_problems` compares an
+object with its record only after taking out what each attached card wrote on it (its `copied_text` record, row by row
+and key by key) and holds that writing to what the attached card writes now (an Effect Text's rows, each id made the
+attached card's; a copy's rows and keys over the Top-Most card's record, at the copying card's lifecycle). The
+source-backed Replacement Effects it expects are the printed ones its objects materialize plus those attached cards
+wrote (an Effect Text's, sourced from the attached card about the Top-Most card; a copy's, the Top-Most card's own). A
+printed row edited, a row no record names, a written row edited with its record or gone, and a written Replacement
+Effect edited or gone are each still a problem. `attached_on_turn`, `copy_lifecycle` and `linked_banished` are dynamic
+fields (effect_ir writes and validates them). A use restriction that names its own ability ("once per turn") is placed
+in that ability's namespace, as a copy's is.
+
 ### 2. Rules text is Inactive while attached (435.1.e, 716-725)
 
 An attached card's printed abilities are switched off entirely (721.2): its printed

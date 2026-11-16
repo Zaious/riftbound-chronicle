@@ -5346,18 +5346,26 @@ def source_active(state: dict[str, Any], source_id: str) -> bool:
 
 
 EFFECT_TEXT_EFFECT_KINDS = {"might_arithmetic", "bonus_damage", "tag_grant", "score_effects_interchangeable"}
-# the keywords an Effect Text may give its Top-Most card: the grantable ones, and Deflect (Hexdrinker), whose granted
-# instances deflect_total already counts (Core 809.2)
-EFFECT_TEXT_KEYWORDS = GRANTABLE_KEYWORDS | {"deflect"}
+# the keywords an Effect Text may give its Top-Most card: the grantable ones, Deflect (Hexdrinker), whose granted
+# instances deflect_total already counts (Core 809.2), and Deathknell (Sacred Shears, The Zero Drive: "[Deathknell] - ..."),
+# which deathknell_instances reads from the computed characteristics - one granted counts (Core 808)
+EFFECT_TEXT_KEYWORDS = GRANTABLE_KEYWORDS | {"deflect", "deathknell"}
+# the board rows an Effect Text may write on its Top-Most card, read there as rows of the card itself (the way a copy's are,
+# COPIED_ROW_FIELDS), each with its id key: a static aura about the card's own place and side (Shurelya's Requiem: "Your
+# units here have [Ganking]") and a Bonus Damage of its controller's sources (Rabadon's Deathcrown: "Your spells and
+# abilities deal 3 Bonus Damage") - the readers take the card's own location and current controller
+EFFECT_TEXT_ROW_FIELDS = {"static_auras": "aura_id", "printed_damage_modifiers": None}
+EFFECT_TEXT_PARTS = {"triggers", "keywords", "effects", "replacements", "rows"}
 
 
 def effect_text_bundle(effect_text: dict[str, Any]) -> dict[str, Any]:
-    """An Effect Text in its ADR-0017 §1 form, {triggers, keywords, effects}; the earlier form, a map of appendable
-    trigger fields (ADR-0013 §6), is read as its `triggers`."""
-    if set(effect_text) <= {"triggers", "keywords", "effects", "replacements"}:
+    """An Effect Text in its ADR-0017 §1 form, {triggers, keywords, effects, replacements, rows}; the earlier form, a map
+    of appendable trigger fields (ADR-0013 §6), is read as its `triggers`."""
+    if set(effect_text) <= EFFECT_TEXT_PARTS:
         return {"triggers": effect_text.get("triggers") or {}, "keywords": effect_text.get("keywords") or [],
-                "effects": effect_text.get("effects") or [], "replacements": effect_text.get("replacements") or []}
-    return {"triggers": effect_text, "keywords": [], "effects": [], "replacements": []}
+                "effects": effect_text.get("effects") or [], "replacements": effect_text.get("replacements") or [],
+                "rows": effect_text.get("rows") or {}}
+    return {"triggers": effect_text, "keywords": [], "effects": [], "replacements": [], "rows": {}}
 
 
 def effect_text_errors(effect_text: Any) -> list[str]:
@@ -5393,7 +5401,13 @@ def effect_text_errors(effect_text: Any) -> list[str]:
             or not isinstance(r.get("replacement_effects"), list) or not r["replacement_effects"] for r in replacements):
         errors.append(".replacements must be death replacements (mode replace_with, event_op kill, replacement_effects) "
                       "without replacement_id, controller, source_object or target_object_id (the attach supplies them)")
-    if not (triggers or keywords or effects or replacements):
+    # set 2 (Shurelya's Requiem, Rabadon's Deathcrown): board rows written on the Top-Most card while attached; each row is
+    # validated where it lands, as the card's own (validate_state)
+    rows = bundle["rows"]
+    if not isinstance(rows, dict) or any(field not in EFFECT_TEXT_ROW_FIELDS or not isinstance(entries, list) or not entries
+                                         or any(not isinstance(e, dict) for e in entries) for field, entries in rows.items()):
+        errors.append(f".rows must map {sorted(EFFECT_TEXT_ROW_FIELDS)} to non-empty lists of rows")
+    if not (triggers or keywords or effects or replacements or rows):
         errors.append(" is empty: an Equipment with no Effect Text carries no effect_text")
     return errors
 
@@ -5642,6 +5656,17 @@ def append_effect_text(state: dict[str, Any], attached_id: str, host_id: str) ->
                     # set 2 package A2 (The Zero Drive, Core 396): a granted ability linked with the granting card's own -
                     # its chain item names that card (granted_by)
                     descriptor["granted_by"] = attached_id
+        if bundle["rows"]:
+            # set 2 (Shurelya's Requiem, Rabadon's Deathcrown): the Effect Text's board rows written on the Top-Most card
+            # beside its own, each id its own (this attached card's), recorded in its copied_text so drop_effect_text
+            # takes them out again (_erase_copied_text) - read there as the card's: its place, its current controller
+            suffix = f":effect_text:{attached_id}"
+            rows = {}
+            for field, entries in bundle["rows"].items():
+                id_key = EFFECT_TEXT_ROW_FIELDS[field]
+                rows[field] = [{**row, id_key: f"{row[id_key]}{suffix}"} if id_key and isinstance(row.get(id_key), str)
+                               else row for row in entries]
+            copied_replacements = _write_copied_text(state, attached_id, host_id, {"rows": rows, "keys": {}, "values": {}}, [])
     else:
         bundle = {"triggers": {field: state_copy.deepcopy(obj[field]) for field in APPENDABLE_TRIGGER_FIELDS
                                if obj.get(field) and (obj.get("effect_text_fields") is None or field in obj["effect_text_fields"])},

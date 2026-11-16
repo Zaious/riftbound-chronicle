@@ -3,7 +3,7 @@
   "identity": {
     "manifest_id": "capability-manifest:6ecee5c59dff38269b1a33f2",
     "capability_set_id": "sha256:6ecee5c59dff38269b1a33f22229e42c7ef1320ed9d91e25860355b153b359b9",
-    "implementation_identity": "sha256:3186b6a44d5ddfd9525f9358311a3cc7310b9648e70b7bea265221f8fbf5fc7b",
+    "implementation_identity": "sha256:f0e6dd247899cad603a541e71c5d43b74913fc2d6f41d77223988396141bd2d8",
     "ruleset": {
       "core": "2026-10-09",
       "faq_as_of": "2026-08-14"
@@ -1021,5 +1021,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:6fa130001967e7821fe2545316329d895cf7913b7e8d9b76198752151465c33a"
+  "report_hash": "sha256:a17a8c424fb2d270d504276e985020e98cd315d8e1af31d9de71c49828a34ab6"
 }

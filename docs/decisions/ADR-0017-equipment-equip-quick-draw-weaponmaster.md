@@ -42,6 +42,17 @@ Every part is written about "I / me", which is the Top-Most card once appended (
 Effect Text appended to its Rules Text). So an appended trigger's `source_object` is the Top-Most card, not the gear,
 and a static's subject is the Top-Most card. While the gear is not attached its Effect Text is inactive (136.2.b, 724).
 
+Addendum (2026-11-16, the overlay's package 23, for the last set-2 Equipment):
+
+- `[Deathknell]` is among the keywords an Effect Text grants (`EFFECT_TEXT_KEYWORDS`; Sacred Shears, The Zero Drive:
+  "[Deathknell] - ..."). It matters: `deathknell_instances` reads the keyword from the computed characteristics, so the
+  appended death trigger is a Deathknell only with it (808: one granted counts).
+- An Effect Text may carry `rows: {static_auras | printed_damage_modifiers: [row, ...]}` - board text the engine reads as
+  rows of the card itself (Shurelya's Requiem: "Your units here have [Ganking]."; Rabadon's Deathcrown: "Your spells and
+  abilities deal 3 Bonus Damage."). The attach writes them on the Top-Most card beside its own, each id made this
+  attached card's, recorded in its `copied_text` - the record Svellsongur's copy already keeps - and `drop_effect_text`
+  takes them out again. Read there, "here" is the Top-Most card's battlefield and "your" its current controller.
+
 ### 2. Rules text is Inactive while attached (435.1.e, 716-725)
 
 An attached card's printed abilities are switched off entirely (721.2): its printed

@@ -11,7 +11,13 @@ text is Inactive while it is attached.
   T7  attaching to a new host takes the Effect Text off the old one (435.1.f, 436.1.d)
   T8  detaching one of two Equipment leaves the other's Effect Text on the host (it used to go too)
   T9  the activate-conquer op reads the host's appended conquer triggers
-  V1  a malformed bundle is refused: an ungrantable keyword, an effect that names its own id, an empty bundle
+  T10 an Effect Text's [Deathknell] is the host's: its appended death trigger is a Deathknell (Core 808: one granted counts)
+  T11 an Effect Text's Bonus Damage row (Rabadon's Deathcrown) is the host's: its controller's sources deal the bonus while
+      it is attached, the opponent's do not; detached, the row goes
+  T12 an Effect Text's static aura row (Shurelya's Requiem: "Your units here have [Ganking]") is the host's: friendly
+      units at its battlefield have the keyword, enemy ones do not; detached, it goes
+  V1  a malformed bundle is refused: an ungrantable keyword, an effect that names its own id, an empty bundle, a row of a
+      field an Effect Text does not write, an empty row list
 """
 from __future__ import annotations
 
@@ -125,10 +131,48 @@ def main() -> int:
     check("T9 activate-conquer reads the host's appended conquer trigger", found is not None and "text" in found,
           conquer.get("reason") if found is None else found)
 
+    # T10-T12 (set 2: Sacred Shears, Rabadon's Deathcrown, Shurelya's Requiem)
+    from effect_ir import bonus_damage, deathknell_instances
+    kit = scene()
+    kit["objects"]["g5"] = gear(might_bonus=0, effect_text={
+        "keywords": [{"keyword": "deathknell"}], "triggers": {"death_triggers": [trigger("dk", "g5")]}})
+    kit["objects"]["g6"] = gear(might_bonus=0, effect_text={
+        "rows": {"printed_damage_modifiers": [{"amount": 3, "scope": {"kind": "controller_sources"}}]}})
+    kit["objects"]["g7"] = gear(might_bonus=0, effect_text={"rows": {"static_auras": [
+        {"aura_id": "here-ganking", "keyword": "ganking",
+         "criteria": {"kind": "unit", "controller_relation": "friendly", "at_source_battlefield": True}}]}})
+    kit["objects"]["e1"] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                            "damage": 0, "exhausted": False}
+    kit["battlefields"]["bf1"]["objects"].append("e1")
+    kit["players"]["p1"]["zones"]["base"] += ["g5", "g6", "g7"]
+    kit = settle_contested(kit)
+    check("T10-T12 the scene is valid", not validate_state(kit), validate_state(kit))
+    dk = attach(kit, "g5", "u1")
+    check("T10 [Deathknell] from an Effect Text: the host has it, its appended death trigger is a Deathknell (808)",
+          has_keyword(dk, "u1", "deathknell") and ids(deathknell_instances(dk, "u1")) == ["dk"]
+          and not has_keyword(kit, "u1", "deathknell"), ids(deathknell_instances(dk, "u1")))
+    bonus = attach(kit, "g6", "u1")
+    check("T11 Bonus Damage rows: the host's controller's sources deal 3 more while attached, the opponent's do not",
+          bonus_damage(kit, "p1", "e1")[0] == 0 and bonus_damage(bonus, "p1", "e1")[0] == 3
+          and bonus_damage(bonus, "p2", "u1")[0] == 0, (bonus_damage(bonus, "p1", "e1"), bonus_damage(bonus, "p2", "u1")))
+    check("T11 and the attached scene is valid", not validate_state(bonus), validate_state(bonus))
+    gone = apply_program(bonus, program("de", {"op": "detach", "effect_id": "d", "object_id": "g6"}))["next_state"]
+    check("T11 detached, the rows go", bonus_damage(gone, "p1", "e1")[0] == 0
+          and not gone["objects"]["u1"].get("printed_damage_modifiers") and not gone["objects"]["u1"].get("copied_text"))
+    aura = attach(kit, "g7", "u1")
+    check("T12 aura rows: a friendly unit at the host's battlefield has [Ganking], an enemy one there does not",
+          has_keyword(aura, "u3", "ganking") and has_keyword(aura, "u1", "ganking") and not has_keyword(aura, "e1", "ganking")
+          and not has_keyword(kit, "u3", "ganking"), (keyword_values(aura, "u3"), keyword_values(aura, "e1")))
+    check("T12 and the attached scene is valid", not validate_state(aura), validate_state(aura))
+    off_aura = apply_program(aura, program("de", {"op": "detach", "effect_id": "d", "object_id": "g7"}))["next_state"]
+    check("T12 detached, the aura goes", not has_keyword(off_aura, "u3", "ganking") and not off_aura["objects"]["u1"].get("static_auras"))
+
     for name, text_value in (("an ungrantable keyword", {"keywords": [{"keyword": "flying"}]}),
                              ("an effect naming its own id", {"effects": [{"kind": "might_arithmetic", "effect_id": "x",
                                                                            "value": {"amount": 1, "mode": "delta"}}]}),
-                             ("an empty bundle", {"keywords": []})):
+                             ("an empty bundle", {"keywords": []}),
+                             ("a row of a field an Effect Text does not write", {"rows": {"move_restrictions": [{"x": 1}]}}),
+                             ("an empty row list", {"rows": {"static_auras": []}})):
         bad = scene()
         bad["objects"]["g3"]["effect_text"] = text_value
         check(f"V1 refused: {name}", any("effect_text" in e for e in validate_state(bad)), validate_state(bad))

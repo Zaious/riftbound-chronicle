@@ -331,6 +331,10 @@ def e6() -> None:
                                  "activated_abilities": {"a1": {"cost": {"energy": 1, "power": {}}, "effect_program_id": "a1"}},
                                  "programs": {"a1": {"effects": [{"op": "draw", "effect_id": "dr", "player": "$controller",
                                                                   "count": 1}]}}}
+    # a copying Equipment (Svellsongur's form): its Effect Text a copy of its Top-Most card's printed text
+    from effect_ir import EFFECT_TEXT_COPY
+    cat["cards"]["Test Copy"] = {"object": {"kind": "gear", "printed_cost": {"energy": 1, "power": {}}, "tags": ["Equipment"],
+                                            "might_bonus": 0, "effect_text_copy": EFFECT_TEXT_COPY}}
     cat["catalogue_hash"] = CE.catalogue_hash(cat)
     if CE.validate_catalogue(cat):
         fail("E6 written", f"the catalogue with an Equipment's rows does not validate: {CE.validate_catalogue(cat)[:2]}")
@@ -381,9 +385,46 @@ def e6() -> None:
     next(r for r in replaced["replacement_effects"] if r.get("source_object") == "g")["optional"] = True
     unreplaced = copy.deepcopy(on)
     unreplaced["replacement_effects"] = [r for r in unreplaced["replacement_effects"] if r.get("source_object") != "g"]
+    # GPT's second review of package 23: the writing is recomputed from the attachment, not read from the records left -
+    # a written row gone with its record
+    erased = copy.deepcopy(on)
+    for field, rows in erased["objects"]["h1"]["copied_text"]["g"]["rows"].items():
+        for row in rows:
+            erased["objects"]["h1"][field].remove(row)
+        if not erased["objects"]["h1"][field]:
+            erased["objects"]["h1"].pop(field)
+    erased["objects"]["h1"].pop("copied_text")
+    # a copy (Test Copy on Test Once): its copied ability and use restriction, held key by key, value by value
+    copying = copy.deepcopy(state)
+    copying["objects"]["o"] = once
+    copying["objects"]["c"] = CE.place(cat, "Test Copy", owner="p1", object_id="c")
+    copying["players"]["p1"]["zones"]["base"] += ["o", "c"]
+    copied = run(copying, {"op": "attach", "effect_id": "a", "object_id": "c", "to": "o"})
+    keys = [k for k in copied["objects"]["o"].get("activated_abilities") or {} if ":copy:" in k]
+    conditions = [k for k in copied["objects"]["o"].get("ability_conditions") or {} if ":copy:" in k]
+    if validate_state(copied) or CE.environment_problems(copied, cat) or len(keys) != 1 or len(conditions) != 1:
+        fail("E6 written", f"a copy attached is not an environment state with its copied ability and condition: "
+                           f"{validate_state(copied) or CE.environment_problems(copied, cat)} {keys} {conditions}")
+        return
+    free = copy.deepcopy(copied)
+    free["objects"]["o"]["activated_abilities"][keys[0]]["cost"]["energy"] = 0
+    other_program = copy.deepcopy(copied)
+    other_program["objects"]["o"]["activated_abilities"][keys[0]]["effect_program_id"] = "Test Unit#a1"
+    unrestricted = copy.deepcopy(copied)
+    unrestricted["objects"]["o"]["ability_conditions"][conditions[0]]["count"] = 9
+    dropped = copy.deepcopy(copied)
+    dropped["objects"]["o"]["activated_abilities"].pop(keys[0])
+    dropped["objects"]["o"]["ability_conditions"].pop(conditions[0])
+    unrecorded = copy.deepcopy(copied)
+    unrecorded["objects"]["o"].pop("copied_text")
     for label, s in (("a row no record names", forged), ("a written row edited with its record", edited_both),
                      ("the host's own printed row edited", printed_edit), ("a row its record names gone", lost),
-                     ("a written Replacement Effect edited", replaced), ("a written Replacement Effect gone", unreplaced)):
+                     ("a written Replacement Effect edited", replaced), ("a written Replacement Effect gone", unreplaced),
+                     ("the written rows gone with their record", erased),
+                     ("a copied ability's cost lowered", free), ("a copied ability's program changed", other_program),
+                     ("a copied use restriction changed", unrestricted),
+                     ("a copied ability and its restriction gone, their record kept", dropped),
+                     ("a copy's record gone, what it wrote kept", unrecorded)):
         if not CE.environment_problems(s, cat):
             fail("E6 written", f"{label} was not named")
 
@@ -402,7 +443,8 @@ def report() -> int:
           "otherwise; what an attached card writes on its Top-Most card is accounted for - attached, re-attached and "
           "detached states are the environment's (its Replacement Effect too) - and a row no record names, a written row "
           "edited with its record, an edited printed row, a missing written row and a written Replacement Effect edited "
-          "or gone are each named; a condition naming its own ability is "
+          "or gone, written rows gone with their record, and a copied ability's cost, program or use restriction changed, the "
+          "ability and restriction gone with their record kept, or the record gone, are each named; a condition naming its own ability is "
           "placed in its namespace (E1-E6)")
     return 0
 

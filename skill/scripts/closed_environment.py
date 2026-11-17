@@ -411,11 +411,13 @@ def _written_replacements(state: dict[str, Any], catalogue: dict[str, Any]) -> l
     return out
 
 
-def _written_by(state: dict[str, Any], attached_id: str, host_id: str, printed_host: dict[str, Any]) -> dict[str, Any] | None:
-    """What the attached card writes on the Top-Most card under its copied_text record ({rows, keys, values}), as
-    effect_ir writes it: an Effect Text's rows (EFFECT_TEXT_ROW_FIELDS), each id made the attached card's; a copy's rows,
-    keys and values (Svellsongur) - copied_text_bundle over the Top-Most card as its record prints it, at the attached
-    card's lifecycle. None when that card is not attached to it or writes nothing there."""
+def _writing(state: dict[str, Any], attached_id: str, host_id: str, printed_host: dict[str, Any]) -> dict[str, Any] | None:
+    """What the attached card writes on the Top-Most card, recomputed as effect_ir writes it: {record: its copied_text
+    entry ({rows, keys, values}), rows: {field: [row, ...]}, keyed: {field: {key: value}}}. An Effect Text's rows
+    (EFFECT_TEXT_ROW_FIELDS), each id made the attached card's; a copy's rows, keyed entries (activated abilities and their
+    conditions, in full: cost, program, use restriction) and values (Svellsongur) - copied_text_bundle over the Top-Most
+    card as its record prints it, at the attached card's lifecycle. None when that card is not attached to it or writes
+    no record there."""
     from effect_ir import EFFECT_TEXT_COPY, EFFECT_TEXT_ROW_FIELDS
     attached = (state.get("objects") or {}).get(attached_id) or {}
     if attached.get("attached_to") != host_id:
@@ -425,8 +427,10 @@ def _written_by(state: dict[str, Any], attached_id: str, host_id: str, printed_h
         if bundle is None:
             return None
         copied = bundle["copy"]
-        return {"rows": copied["rows"], "keys": {field: sorted(keyed) for field, keyed in copied["keys"].items()},
-                "values": copied["values"]}
+        return {"record": {"rows": state_copy.deepcopy(copied["rows"]),
+                           "keys": {field: sorted(keyed) for field, keyed in copied["keys"].items()},
+                           "values": state_copy.deepcopy(copied["values"])},
+                "rows": state_copy.deepcopy(copied["rows"]), "keyed": state_copy.deepcopy(copied["keys"])}
     text = attached.get("effect_text")
     rows = text.get("rows") if isinstance(text, dict) else None
     if not rows:
@@ -437,42 +441,60 @@ def _written_by(state: dict[str, Any], attached_id: str, host_id: str, printed_h
         id_key = EFFECT_TEXT_ROW_FIELDS.get(field)
         written[field] = [{**row, id_key: f"{row[id_key]}{suffix}"} if id_key and isinstance(row.get(id_key), str) else row
                           for row in entries]
-    return {"rows": written, "keys": {}, "values": {}}
+    return {"record": {"rows": state_copy.deepcopy(written), "keys": {}, "values": {}}, "rows": written, "keyed": {}}
 
 
 def _printed_projection(state: dict[str, Any], object_id: str, obj: dict[str, Any],
                         printed: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
-    """The object's printed fields - its card fields with what attached cards wrote on it taken out (its copied_text
-    record, row by row and key by key) - and why any of that writing is not what the attached card writes. Nothing is let
-    off by field: a printed row edited, a row no record names, a record's row missing from the object, or a record
-    writing other than its attached card does, each is a problem."""
+    """The object's printed fields and why what attached cards wrote on it is not what they write (package 23, GPT's
+    second review). What each card attached to it writes is recomputed from the attachment itself (_writing: the
+    attached card's record, the Top-Most card's record, the copying card's lifecycle) - not read from the records left
+    in the state: each such writing must have its copied_text record, equal to what that card records; a record no
+    attached card writes is a problem; each row and each keyed entry the writing puts on the object must be there with
+    its whole value (a copied ability's cost, program, use restriction). Only a row or entry so verified is taken out of
+    the printed comparison, so a printed row edited, a row or entry no writing names, and an entry missing or changed are
+    each still a problem (here or as a field differing from the record)."""
     fields = _card_fields(obj)
     record = fields.pop(WRITTEN_RECORD, None)
-    if record is None:
-        return fields, []
-    if not isinstance(record, dict):
-        return fields, [f"{object_id}.{WRITTEN_RECORD} is not a record of attached cards"]
-    problems = []
-    for attached_id, written in sorted(record.items()):
-        if not isinstance(written, dict) or written != _written_by(state, attached_id, object_id, printed):
+    problems: list[str] = []
+    if record is not None and not isinstance(record, dict):
+        problems.append(f"{object_id}.{WRITTEN_RECORD} is not a record of attached cards")
+        record = {}
+    record = record or {}
+    expected = {}
+    for attached_id in sorted(state.get("objects") or {}):
+        writing = _writing(state, attached_id, object_id, printed)
+        if writing is not None:
+            expected[attached_id] = writing
+    for attached_id in sorted(set(record) - set(expected)):
+        problems.append(f"{object_id}.{WRITTEN_RECORD}[{attached_id!r}] is a record no card attached to it writes")
+    for attached_id, writing in sorted(expected.items()):
+        if attached_id not in record:
+            problems.append(f"{object_id}.{WRITTEN_RECORD} lacks the record of what {attached_id!r} writes")
+        elif record[attached_id] != writing["record"]:
             problems.append(f"{object_id}.{WRITTEN_RECORD}[{attached_id!r}] is not what that attached card writes")
-            if not isinstance(written, dict):
-                continue
-        for field, rows in (written.get("rows") or {}).items():
+        for field, rows in sorted(writing["rows"].items()):
             kept = list(fields.get(field) or [])
             for row in rows:
                 if row in kept:
                     kept.remove(row)
                 else:
-                    problems.append(f"{object_id}.{field} lacks a row {attached_id!r} wrote")
+                    problems.append(f"{object_id}.{field} lacks a row {attached_id!r} writes")
             if kept:
                 fields[field] = kept
             else:
                 fields.pop(field, None)
-        for field, keys in (written.get("keys") or {}).items():
-            kept = {k: v for k, v in (fields.get(field) or {}).items() if k not in set(keys)}
-            if kept:
-                fields[field] = kept
+        for field, keyed in sorted(writing["keyed"].items()):
+            have = dict(fields.get(field) or {}) if isinstance(fields.get(field), dict) else {}
+            for key, value in sorted(keyed.items()):
+                if key not in have:
+                    problems.append(f"{object_id}.{field} lacks {key!r}, which {attached_id!r} writes")
+                elif have[key] != value:
+                    problems.append(f"{object_id}.{field}[{key!r}] is not what {attached_id!r} writes")
+                else:
+                    have.pop(key)
+            if have:
+                fields[field] = have
             else:
                 fields.pop(field, None)
     return fields, problems

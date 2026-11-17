@@ -65,6 +65,15 @@ Effect edited or gone are each still a problem. `attached_on_turn`, `copy_lifecy
 fields (effect_ir writes and validates them). A use restriction that names its own ability ("once per turn") is placed
 in that ability's namespace, as a copy's is.
 
+Addendum (2026-11-17, the overlay's package 23, its second review): the writing is recomputed from the attachment, not
+read from the records the state still holds. For every card attached to an object, what it writes (`_writing`: from the
+attached card's record, the Top-Most card's record and the copying card's `copy_lifecycle`) must have its `copied_text`
+record, equal to what that card records; a record no attached card writes is a problem. Each row and each keyed entry
+the writing puts on the object (a copied activated ability in full - cost, program, timing - and its use restriction)
+must be there with its whole value, and only an entry so verified is taken out of the printed comparison. A copied
+ability made free, changed or removed with its record kept, and written rows removed together with their record, are
+each refused.
+
 ### 2. Rules text is Inactive while attached (435.1.e, 716-725)
 
 An attached card's printed abilities are switched off entirely (721.2): its printed

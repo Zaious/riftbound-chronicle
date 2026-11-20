@@ -366,7 +366,27 @@ def discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: d
              orders: set | None = None) -> tuple[list[list[dict]], list[str]]:
     """(every decision list with which the procedure accepts the declaration, the reasons it refused the others).
     A branch whose cost waits for the player's order of its discounts (Core 356.4.c.1) adds the discounts to `orders`
-    (package 15): the order is a field of the declaration, so the caller tries the declaration with each order."""
+    (package 15): the order is a field of the declaration, so the caller tries the declaration with each order.
+
+    Package 24: the Chain the timing state holds is in effect_ir.CHAIN_VIEW for the whole listing - the target options
+    of a Chain-item target (Not So Fast) read it between the procedure's calls, where play_transaction.play_card's own
+    view has already been reset - set here as play_card sets it, and reset in finally, so nothing carries over to the
+    next request."""
+    try:
+        view = (IR.chain_view_of(timing_state, state)
+                if isinstance(timing_state, dict) and isinstance(state, dict) else None)
+    except Exception:  # noqa: BLE001 - a malformed state is reported by the transaction's own validation
+        view = None
+    token = IR.CHAIN_VIEW.set(view)
+    try:
+        return _discover(timing_state, state, declaration, program, actor, budget, orders)
+    finally:
+        IR.CHAIN_VIEW.reset(token)
+
+
+def _discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: dict[str, Any],
+              program: dict[str, Any] | None, actor: str, budget: list[int],
+              orders: set | None = None) -> tuple[list[list[dict]], list[str]]:
     at_play = None if _reads_receipt(program) else program
     accepted, refused = [], []
     # each branch with its own receipts: what chance orders depends on what was chosen before it

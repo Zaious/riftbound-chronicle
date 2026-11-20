@@ -16,6 +16,18 @@ targeting p2's own unit, p1's spell targeting p1's unit:
   C6 no Chain      run with no Chain to read: the target is refused by name
   V                a Chain-item target that names an object kind does not validate
 
+Package 24 (GPT's second review of the engine-verdict service, 2026-11-20): the same targets listed the way the
+action space lists them - play_space.discover, which until then listed a Chain-item target with no Chain to read
+(effect_ir.CHAIN_VIEW unset there), so Not So Fast had no legal target in any enumeration. On a Chain that adds p2's
+triggered ability targeting p1's unit and p2's spell targeting p1's gear:
+
+  E1 an enemy ability that chose a friendly unit is a target the enumeration offers
+  E2 an enemy spell that chose a friendly unit, and one that chose a friendly gear, are offered (and the enemy
+     ability that chose the gear)
+  E3 an enemy spell about its own unit, and a friendly spell, are not offered
+  E4 the Chain view is set only while the procedure lists (none before, none after), and a listing on a state with
+     no Chain right after offers no Chain item: nothing carries over from one request to the next
+
     python skill/scripts/check_set2_counter_chain_item.py
 """
 from __future__ import annotations
@@ -97,7 +109,64 @@ def play_and_resolve(timing, state, target, *, before_resolution=None):
     return played, resolve_with_program(t, "spell-nsf", e, NSF)
 
 
+def boards_e():
+    """boards(), with p2's triggered ability targeting p1's unit and p2's spell targeting p1's gear added."""
+    timing, state = boards()
+    state["objects"]["eg"] = {"owner": "p2", "controller": "p2", "kind": "spell", "base_might": 0, "might_modifiers": [],
+                              "damage": 0, "exhausted": False, "printed_cost": {"energy": 0, "power": {}}}
+    state["chain_items"]["spell-g"] = {"card": "eg", "controller": "p2", "played_targets": chosen("t", "g1")}
+    timing["chain"]["items"] = [
+        *timing["chain"]["items"][:-1],
+        {**item("trig-u", "p2", "ability", "default"),
+         "finalized_targets": [{"decision_id": "t", "stage": "trigger_finalization", "kind": "target_selection",
+                                "controller": "p2", "value": ["u1"], "selection_identities": {"u1": "u1@0"}}]},
+        item("spell-g", "p2", "spell", "default"),
+        timing["chain"]["items"][-1]]
+    return timing, state
+
+
+def listed_targets(timing, state):
+    """The Chain items play_space.discover offers Not So Fast, with the Chain view before and after the listing."""
+    import play_space as PS
+    decl = {"schema_version": PT.DECLARATION_VERSION, "ruleset": RULESET, "play_id": "play-nsf", "actor": "p1", "card": "nsf",
+            "effect_program_id": NSF["program_id"], "chain_item": {"id": "spell-nsf", "object_kind": "spell", "timing": "reaction"},
+            "cost": {"base": {"energy": 0, "power": {}}}}
+    before = IR.CHAIN_VIEW.get()
+    accepted, refused = PS.discover(timing, state, decl, NSF, "p1", [0], set())
+    after = IR.CHAIN_VIEW.get()
+    offered = sorted({v for decisions in accepted for d in decisions for v in (d.get("value") or []) if isinstance(v, str)})
+    return offered, refused, before, after
+
+
+def check_enumeration() -> None:
+    timing, state = boards_e()
+    problems = IR.validate_state(state)
+    if problems:
+        fail("E board", problems[:3])
+        return
+    offered, refused, before, after = listed_targets(timing, state)
+    if "trig-u" not in offered:
+        fail("E1", f"an enemy ability that chose a friendly unit is not offered: {offered} (refused {sorted(set(refused))[:3]})")
+    for item_id in ("spell-e", "spell-g", "trig-e"):
+        if item_id not in offered:
+            fail("E2", f"{item_id} is not offered: {offered}")
+    for item_id in ("spell-o", "spell-f"):
+        if item_id in offered:
+            fail("E3", f"{item_id} is offered: {offered}")
+    if before is not None or after is not None:
+        fail("E4", f"the Chain view outside the listing: before {before!r}, after {after!r}")
+    bare_timing = copy.deepcopy(timing)
+    bare_timing["chain"]["items"] = []
+    bare_timing["chain"]["initiated_by"] = None
+    bare_state = copy.deepcopy(state)
+    bare_state["chain_items"] = {}
+    offered2, _refused2, _b, after2 = listed_targets(bare_timing, bare_state)
+    if offered2 or after2 is not None:
+        fail("E4", f"a listing with no Chain right after offers {offered2}, the view after it {after2!r}")
+
+
 def main() -> int:
+    check_enumeration()
     timing, state = boards()
     problems = IR.validate_state(state)
     if problems:
